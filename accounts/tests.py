@@ -22,7 +22,7 @@ class JobSeekerProfileModelTest(TestCase):
             last_name='Doe',
             role=User.USER
         )
-        self.profile = JobSeekerProfile.objects.create(user=self.user)
+        self.profile = JobSeekerProfile.objects.get(user=self.user)
     
     def test_profile_creation(self):
         """Test that profile is created successfully."""
@@ -205,7 +205,7 @@ class ResumeDownloadViewTest(TestCase):
             password='testpass123',
             role=User.USER
         )
-        self.profile = JobSeekerProfile.objects.create(user=self.job_seeker)
+        self.profile = JobSeekerProfile.objects.get(user=self.job_seeker)
         
         # Create resume file
         resume_file = SimpleUploadedFile("resume.pdf", b"file_content", content_type="application/pdf")
@@ -474,7 +474,7 @@ class SavedJobsTest(TestCase):
             password='testpass123',
             role=User.USER
         )
-        self.profile = JobSeekerProfile.objects.create(user=self.user)
+        self.profile = JobSeekerProfile.objects.get(user=self.user)
         
         # Create a company owner
         self.company_owner = User.objects.create_user(
