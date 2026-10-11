@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ platform_name }} - {{ platform_tagline }}{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero text-center">
+    <div class="container">
+        <h1 class="display-4 fw-bold mb-4">{{ platform_tagline }}</h1>
+        <p class="lead mb-5">Connect with top employers and discover your next career opportunity</p>
+        
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <form class="d-flex gap-2 mb-4">
+                    <input type="text" class="form-control form-control-lg" placeholder="Job title or keyword">
+                    <input type="text" class="form-control form-control-lg" placeholder="Location">
+                    <button type="submit" class="btn btn-light btn-lg px-4">
+                        <i class="bi bi-search"></i> Search
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        {% if not user.is_authenticated %}
+        <div class="mt-4">
+            <a href="{% url 'accounts:register' %}" class="btn btn-light btn-lg me-2">
+                <i class="bi bi-person-plus"></i> Get Started
+            </a>
+            <a href="{% url 'accounts:login' %}" class="btn btn-outline-light btn-lg">
+                <i class="bi bi-box-arrow-in-right"></i> Login
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <i class="bi bi-search text-primary" style="font-size: 3rem;"></i>
+                        <h4 class="mt-3">Find Jobs</h4>
+                        <p class="text-muted">Browse thousands of job opportunities from top companies</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <i class="bi bi-file-earmark-text text-primary" style="font-size: 3rem;"></i>
+                        <h4 class="mt-3">Easy Apply</h4>
+                        <p class="text-muted">Apply with one click using your profile and resume</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <i class="bi bi-graph-up text-primary" style="font-size: 3rem;"></i>
+                        <h4 class="mt-3">Track Progress</h4>
+                        <p class="text-muted">Monitor your applications and get real-time updates</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="bg-light py-5">
+    <div class="container text-center">
+        <h2 class="mb-4">Ready to Start Your Journey?</h2>
+        <p class="lead mb-4">Join thousands of job seekers and employers on {{ platform_name }}</p>
+        {% if not user.is_authenticated %}
+        <a href="{% url 'accounts:register' %}" class="btn btn-primary btn-lg">
+            <i class="bi bi-person-plus"></i> Register Now
+        </a>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
