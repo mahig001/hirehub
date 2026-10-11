@@ -21,6 +21,9 @@ urlpatterns = [
     
     # Jobs app
     path('jobs/', include('jobs.urls')),
+    
+    # Applications app
+    path('applications/', include('applications.urls')),
 ]
 
 # Serve media files in development

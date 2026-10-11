@@ -124,6 +124,15 @@ class JobDetailView(DetailView):
         context['can_edit'] = can_edit
         context['is_job_seeker'] = user.is_authenticated and user.role == User.USER
         
+        # Check if user has already applied
+        if user.is_authenticated and user.role == User.USER:
+            from applications.models import Application
+            try:
+                user_application = Application.objects.get(job=job, applicant=user)
+                context['user_application'] = user_application
+            except Application.DoesNotExist:
+                context['user_application'] = None
+        
         return context
 
 

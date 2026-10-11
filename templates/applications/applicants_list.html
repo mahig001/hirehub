@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+
+{% block title %}Applicants for {{ job.title }} - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="mb-2">
+                        <i class="bi bi-people"></i> Applicants
+                    </h1>
+                    <p class="text-muted mb-0">
+                        For: <strong>{{ job.title }}</strong>
+                        <a href="{{ job.get_absolute_url }}" class="btn btn-sm btn-outline-primary ms-2">
+                            <i class="bi bi-eye"></i> View Job
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters Card -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    {{ filter.form.status }}
+                </div>
+                <div class="col-md-3">
+                    {{ filter.form.applied_after }}
+                </div>
+                <div class="col-md-3">
+                    {{ filter.form.applied_before }}
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Filter
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Applicants List -->
+    {% if applications %}
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Applicant</th>
+                            <th>Email</th>
+                            <th>Applied On</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for application in applications %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    {% if application.applicant.avatar %}
+                                    <img src="{{ application.applicant.avatar.url }}" 
+                                         alt="{{ application.applicant.get_full_name }}"
+                                         class="rounded-circle me-2"
+                                         style="width: 40px; height: 40px; object-fit: cover;">
+                                    {% else %}
+                                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2"
+                                         style="width: 40px; height: 40px;">
+                                        <span class="fw-bold">{{ application.applicant.first_name|first }}{{ application.applicant.last_name|first }}</span>
+                                    </div>
+                                    {% endif %}
+                                    <div>
+                                        <strong>{{ application.applicant.get_full_name }}</strong>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>{{ application.applicant.email }}</td>
+                            <td>{{ application.applied_at|date:"M d, Y" }}</td>
+                            <td>
+                                {% if application.status == 'PENDING' %}
+                                <span class="badge bg-secondary">
+                                    <i class="bi bi-clock"></i> Pending
+                                </span>
+                                {% elif application.status == 'REVIEWING' %}
+                                <span class="badge bg-info">
+                                    <i class="bi bi-eye"></i> Reviewing
+                                </span>
+                                {% elif application.status == 'SHORTLISTED' %}
+                                <span class="badge bg-success">
+                                    <i class="bi bi-check-circle"></i> Shortlisted
+                                </span>
+                                {% elif application.status == 'REJECTED' %}
+                                <span class="badge bg-danger">
+                                    <i class="bi bi-x-circle"></i> Rejected
+                                </span>
+                                {% elif application.status == 'WITHDRAWN' %}
+                                <span class="badge bg-dark">
+                                    <i class="bi bi-arrow-return-left"></i> Withdrawn
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'applications:detail' application.pk %}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" 
+                                        onclick="loadTimeline({{ application.pk }})">
+                                    <i class="bi bi-clock-history"></i> Timeline
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Applicants pagination" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">First</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Previous</a>
+            </li>
+            {% endif %}
+
+            <li class="page-item active">
+                <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            </li>
+
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Next</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Last</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="card shadow-sm">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-inbox display-1 text-muted"></i>
+            <h3 class="mt-3">No Applications Yet</h3>
+            <p class="text-muted">No one has applied to this job yet.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Timeline Modal -->
+<div class="modal fade" id="timelineModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-clock-history"></i> Application Timeline
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="timelineContent">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function loadTimeline(applicationId) {
+    const modal = new bootstrap.Modal(document.getElementById('timelineModal'));
+    const content = document.getElementById('timelineContent');
+    
+    // Show loading spinner
+    content.innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    `;
+    
+    modal.show();
+    
+    // Fetch timeline data
+    fetch(`/applications/${applicationId}/timeline/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.timeline && data.timeline.length > 0) {
+                let html = '<div class="timeline">';
+                data.timeline.forEach((item, index) => {
+                    const date = new Date(item.changed_at);
+                    html += `
+                        <div class="mb-3 pb-3 ${index < data.timeline.length - 1 ? 'border-bottom' : ''}">
+                            <h6 class="mb-1">
+                                ${item.old_status ? `<span class="text-muted">${item.old_status}</span> <i class="bi bi-arrow-right"></i>` : ''}
+                                <span class="text-primary">${item.new_status}</span>
+                            </h6>
+                            ${item.note ? `<p class="text-muted mb-1">${item.note}</p>` : ''}
+                            <small class="text-muted">
+                                by ${item.changed_by} on ${date.toLocaleDateString()} ${date.toLocaleTimeString()}
+                            </small>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                content.innerHTML = html;
+            } else {
+                content.innerHTML = '<p class="text-muted text-center">No timeline data available.</p>';
+            }
+        })
+        .catch(error => {
+            content.innerHTML = '<p class="text-danger text-center">Error loading timeline.</p>';
+            console.error('Error:', error);
+        });
+}
+</script>
+{% endblock %}
