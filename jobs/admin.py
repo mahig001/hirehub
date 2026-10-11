@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Category, Skill, Job
+from .models import Category, Skill, Job, JobReport
 import logging
 
 logger = logging.getLogger(__name__)
@@ -111,3 +111,25 @@ class JobAdmin(admin.ModelAdmin):
         self.message_user(request, f'{count} jobs have been deactivated.')
         logger.info(f'Admin {request.user.email} deactivated {count} jobs')
     deactivate_jobs.short_description = 'Deactivate selected jobs'
+
+
+@admin.register(JobReport)
+class JobReportAdmin(admin.ModelAdmin):
+    """Admin interface for JobReport model."""
+    
+    list_display = ['job', 'reporter', 'reason', 'status', 'created_at', 'reviewed_by']
+    list_filter = ['status', 'reason', 'created_at']
+    search_fields = ['job__title', 'reporter__email', 'description']
+    readonly_fields = ['created_at', 'reviewed_at']
+    
+    fieldsets = (
+        ('Report Information', {
+            'fields': ('job', 'reporter', 'reason', 'description')
+        }),
+        ('Review', {
+            'fields': ('status', 'reviewed_by', 'reviewed_at')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at',)
+        }),
+    )

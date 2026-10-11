@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Contact Message - {{ platform_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1><i class="bi bi-envelope"></i> Contact Message</h1>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'dashboard:contact_messages' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ message.subject }}</h5>
+                    <hr>
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="20%">From:</th>
+                            <td>{{ message.name }} &lt;{{ message.email }}&gt;</td>
+                        </tr>
+                        <tr>
+                            <th>Date:</th>
+                            <td>{{ message.created_at|date:"M d, Y H:i" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Status:</th>
+                            <td>
+                                {% if message.is_read %}
+                                <span class="badge bg-success">Read</span>
+                                {% else %}
+                                <span class="badge bg-warning">Unread</span>
+                                {% endif %}
+                                {% if message.responded_at %}
+                                <span class="badge bg-info">Responded on {{ message.responded_at|date:"M d, Y" }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                    <hr>
+                    <h6>Message:</h6>
+                    <p>{{ message.message|linebreaks }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Actions</h5>
+                    <form method="post">
+                        {% csrf_token %}
+                        {% if not message.is_read %}
+                        <button type="submit" name="action" value="mark_read" class="btn btn-success w-100 mb-2">
+                            <i class="bi bi-check"></i> Mark as Read
+                        </button>
+                        {% else %}
+                        <button type="submit" name="action" value="mark_unread" class="btn btn-outline-secondary w-100 mb-2">
+                            <i class="bi bi-envelope"></i> Mark as Unread
+                        </button>
+                        {% endif %}
+                        {% if not message.responded_at %}
+                        <button type="submit" name="action" value="responded" class="btn btn-primary w-100">
+                            <i class="bi bi-reply"></i> Mark as Responded
+                        </button>
+                        {% endif %}
+                    </form>
+                    <hr>
+                    <a href="mailto:{{ message.email }}?subject=Re: {{ message.subject }}" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-envelope"></i> Reply via Email
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

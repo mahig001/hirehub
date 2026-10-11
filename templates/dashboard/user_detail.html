@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}User Details - {{ platform_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1><i class="bi bi-person"></i> User Details</h1>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'dashboard:user_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to List
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">User Information</h5>
+                    <table class="table">
+                        <tr>
+                            <th width="30%">Email:</th>
+                            <td>{{ user_obj.email }}</td>
+                        </tr>
+                        <tr>
+                            <th>Full Name:</th>
+                            <td>{{ user_obj.get_full_name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Role:</th>
+                            <td><span class="badge bg-info">{{ user_obj.get_role_display }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>Status:</th>
+                            <td>
+                                {% if user_obj.is_active %}
+                                <span class="badge bg-success">Active</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Inactive</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Email Verified:</th>
+                            <td>{{ user_obj.is_email_verified|yesno:"Yes,No" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Joined:</th>
+                            <td>{{ user_obj.created_at|date:"M d, Y" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Last Updated:</th>
+                            <td>{{ user_obj.updated_at|date:"M d, Y H:i" }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Actions</h5>
+                    <form method="post" action="{% url 'dashboard:user_toggle_active' user_obj.pk %}">
+                        {% csrf_token %}
+                        {% if user_obj.is_active %}
+                        <button type="submit" class="btn btn-warning w-100 mb-2">
+                            <i class="bi bi-x-circle"></i> Deactivate User
+                        </button>
+                        {% else %}
+                        <button type="submit" class="btn btn-success w-100 mb-2">
+                            <i class="bi bi-check-circle"></i> Activate User
+                        </button>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -122,3 +122,56 @@ class Job(models.Model):
         elif self.salary_max:
             return f'Up to ${self.salary_max:,.0f}'
         return 'Not specified'
+
+
+class JobReport(models.Model):
+    """Job report model for flagging inappropriate jobs."""
+    
+    SPAM = 'SPAM'
+    INAPPROPRIATE = 'INAPPROPRIATE'
+    FRAUD = 'FRAUD'
+    OTHER = 'OTHER'
+    
+    REASON_CHOICES = [
+        (SPAM, 'Spam'),
+        (INAPPROPRIATE, 'Inappropriate'),
+        (FRAUD, 'Fraud'),
+        (OTHER, 'Other'),
+    ]
+    
+    PENDING = 'PENDING'
+    REVIEWED = 'REVIEWED'
+    RESOLVED = 'RESOLVED'
+    DISMISSED = 'DISMISSED'
+    
+    STATUS_CHOICES = [
+        (PENDING, 'Pending'),
+        (REVIEWED, 'Reviewed'),
+        (RESOLVED, 'Resolved'),
+        (DISMISSED, 'Dismissed'),
+    ]
+    
+    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='reports')
+    reporter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='job_reports')
+    reason = models.CharField(max_length=20, choices=REASON_CHOICES)
+    description = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reviewed_reports'
+    )
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status']),
+            models.Index(fields=['created_at']),
+        ]
+    
+    def __str__(self):
+        return f'Report for {self.job.title} by {self.reporter.get_full_name()}'

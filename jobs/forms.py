@@ -118,3 +118,32 @@ class JobFilterSet(FilterSet):
     class Meta:
         model = Job
         fields = ['category', 'skills', 'location', 'job_type']
+
+
+class ReportJobForm(forms.Form):
+    """Form for reporting a job."""
+    
+    SPAM = 'SPAM'
+    INAPPROPRIATE = 'INAPPROPRIATE'
+    FRAUD = 'FRAUD'
+    OTHER = 'OTHER'
+    
+    REASON_CHOICES = [
+        ('', 'Select a reason...'),
+        (SPAM, 'Spam'),
+        (INAPPROPRIATE, 'Inappropriate'),
+        (FRAUD, 'Fraud'),
+        (OTHER, 'Other'),
+    ]
+    
+    reason = forms.ChoiceField(
+        choices=REASON_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    description = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 5,
+            'placeholder': 'Please provide details about why you are reporting this job...'
+        })
+    )

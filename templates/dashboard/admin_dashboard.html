@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard - {{ platform_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        border-left: 4px solid;
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+    .stat-card-primary { border-left-color: #0d6efd; }
+    .stat-card-success { border-left-color: #198754; }
+    .stat-card-info { border-left-color: #0dcaf0; }
+    .stat-card-warning { border-left-color: #ffc107; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1><i class="bi bi-speedometer2"></i> Admin Dashboard</h1>
+            <p class="text-muted">System overview and statistics</p>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card stat-card-primary">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Total Users</h5>
+                    <h2 class="mb-0">{{ stats.total_users }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card stat-card-success">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Active Jobs</h5>
+                    <h2 class="mb-0">{{ stats.active_jobs }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card stat-card-info">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Total Applications</h5>
+                    <h2 class="mb-0">{{ stats.total_applications }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card stat-card-warning">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Pending Companies</h5>
+                    <h2 class="mb-0">{{ stats.pending_companies }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">User Registrations (Last 30 Days)</h5>
+                    <canvas id="usersChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Job Postings (Last 30 Days)</h5>
+                    <canvas id="jobsChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Applications (Last 30 Days)</h5>
+                    <canvas id="applicationsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Users Chart
+    const usersData = {{ users_chart_data|safe|default:"[]" }};
+    const usersCtx = document.getElementById('usersChart').getContext('2d');
+    new Chart(usersCtx, {
+        type: 'line',
+        data: {
+            labels: usersData.map(item => item.date),
+            datasets: [{
+                label: 'Users',
+                data: usersData.map(item => item.count),
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+
+    // Jobs Chart
+    const jobsData = {{ jobs_chart_data|safe|default:"[]" }};
+    const jobsCtx = document.getElementById('jobsChart').getContext('2d');
+    new Chart(jobsCtx, {
+        type: 'line',
+        data: {
+            labels: jobsData.map(item => item.date),
+            datasets: [{
+                label: 'Jobs',
+                data: jobsData.map(item => item.count),
+                borderColor: '#198754',
+                backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+
+    // Applications Chart
+    const appsData = {{ applications_chart_data|safe|default:"[]" }};
+    const appsCtx = document.getElementById('applicationsChart').getContext('2d');
+    new Chart(appsCtx, {
+        type: 'line',
+        data: {
+            labels: appsData.map(item => item.date),
+            datasets: [{
+                label: 'Applications',
+                data: appsData.map(item => item.count),
+                borderColor: '#0dcaf0',
+                backgroundColor: 'rgba(13, 202, 240, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+</script>
+{% endblock %}

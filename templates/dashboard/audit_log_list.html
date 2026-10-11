@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block title %}Audit Logs - {{ platform_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1><i class="bi bi-list-check"></i> Audit Logs</h1>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'dashboard:admin_dashboard' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter Form -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <select name="action" class="form-select">
+                        <option value="">All Actions</option>
+                        {% for action in available_actions %}
+                        <option value="{{ action }}" {% if action_filter == action %}selected{% endif %}>{{ action }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="date" name="date_from" class="form-control" placeholder="From date" value="{{ date_from }}">
+                </div>
+                <div class="col-md-3">
+                    <input type="date" name="date_to" class="form-control" placeholder="To date" value="{{ date_to }}">
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">Filter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date/Time</th>
+                            <th>Actor</th>
+                            <th>Action</th>
+                            <th>Target</th>
+                            <th>IP Address</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td><small>{{ log.created_at|date:"M d, Y H:i:s" }}</small></td>
+                            <td>
+                                {% if log.actor %}
+                                {{ log.actor.get_full_name }}<br>
+                                <small class="text-muted">{{ log.actor.email }}</small>
+                                {% else %}
+                                <em>System</em>
+                                {% endif %}
+                            </td>
+                            <td><span class="badge bg-info">{{ log.action }}</span></td>
+                            <td>
+                                {{ log.target_model }}
+                                {% if log.target_id %}#{{ log.target_id }}{% endif %}
+                                {% if log.details %}
+                                <br><small class="text-muted">{{ log.details }}</small>
+                                {% endif %}
+                            </td>
+                            <td><small>{{ log.ip_address|default:"-" }}</small></td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">No audit logs found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if is_paginated %}
+            <nav>
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
+                    {% endif %}
+                    <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+                    {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

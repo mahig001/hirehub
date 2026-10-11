@@ -1,12 +1,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
-from django.views.generic import CreateView, UpdateView, DetailView, ListView
+from django.views.generic import CreateView, UpdateView, DetailView, ListView, FormView
 from django.urls import reverse_lazy
 from django.conf import settings
 from django_filters.views import FilterView
-from .models import Job
-from .forms import JobForm, JobFilterSet
+from .models import Job, JobReport
+from .forms import JobForm, JobFilterSet, ReportJobForm
 from accounts.models import User
 from companies.models import Employee
 import logging
@@ -197,3 +197,39 @@ class MyJobsListView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['companies'] = self.companies
         return context
+
+
+class ReportJobView(LoginRequiredMixin, FormView):
+    """View for reporting a job."""
+    
+    template_name = 'jobs/report_job.html'
+    form_class = ReportJobForm
+    
+    def dispatch(self, request, *args, **kwargs):
+        """Get the job being reported."""
+        self.job = get_object_or_404(Job, pk=kwargs['pk'])
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get_context_data(self, **kwargs):
+        """Add job to context."""
+        context = super().get_context_data(**kwargs)
+        context['job'] = self.job
+        return context
+    
+    def form_valid(self, form):
+        """Create the job report."""
+        JobReport.objects.create(
+            job=self.job,
+            reporter=self.request.user,
+            reason=form.cleaned_data['reason'],
+            description=form.cleaned_data['description']
+        )
+        messages.success(
+            self.request,
+            'Thank you for reporting this job. We will review it shortly.'
+        )
+        logger.info(f'Job reported: {self.job.title} by {self.request.user.email}')
+        return redirect('jobs:detail', slug=self.job.slug)
+    
+    def get_success_url(self):
+        return reverse_lazy('jobs:detail', kwargs={'slug': self.job.slug})

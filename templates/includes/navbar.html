@@ -59,7 +59,6 @@
                             </li>
                             {% endif %}
                             {% if user.role == 'EMPLOYEE' %}
-                            {% elif user.role == 'EMPLOYEE' %}
                             <li>
                                 <a class="dropdown-item" href="#">
                                     <i class="bi bi-building"></i> Company
@@ -68,6 +67,44 @@
                             <li>
                                 <a class="dropdown-item" href="#">
                                     <i class="bi bi-briefcase"></i> My Jobs
+                                </a>
+                            </li>
+                            {% elif user.role == 'ADMIN' %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li class="dropdown-header">Admin Console</li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'dashboard:admin_dashboard' %}">
+                                    <i class="bi bi-speedometer2"></i> Dashboard
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'dashboard:user_list' %}">
+                                    <i class="bi bi-people"></i> Users
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'dashboard:company_management' %}">
+                                    <i class="bi bi-building"></i> Companies
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'dashboard:job_management' %}">
+                                    <i class="bi bi-briefcase"></i> Jobs
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'dashboard:job_reports' %}">
+                                    <i class="bi bi-flag"></i> Reports
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'dashboard:contact_messages' %}">
+                                    <i class="bi bi-envelope"></i> Contact Messages
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'dashboard:audit_logs' %}">
+                                    <i class="bi bi-list-check"></i> Audit Logs
                                 </a>
                             </li>
                             {% endif %}

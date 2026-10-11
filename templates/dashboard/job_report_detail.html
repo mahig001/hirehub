@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block title %}Report Details - {{ platform_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1><i class="bi bi-flag"></i> Report Details</h1>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'dashboard:job_reports' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Reports
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Report Information</h5>
+                    <table class="table">
+                        <tr>
+                            <th width="30%">Job:</th>
+                            <td><a href="{{ report.job.get_absolute_url }}" target="_blank">{{ report.job.title }}</a></td>
+                        </tr>
+                        <tr>
+                            <th>Company:</th>
+                            <td>{{ report.job.company.name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Reported By:</th>
+                            <td>{{ report.reporter.get_full_name }} ({{ report.reporter.email }})</td>
+                        </tr>
+                        <tr>
+                            <th>Reason:</th>
+                            <td><span class="badge bg-warning">{{ report.get_reason_display }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>Description:</th>
+                            <td>{{ report.description }}</td>
+                        </tr>
+                        <tr>
+                            <th>Status:</th>
+                            <td>
+                                {% if report.status == 'PENDING' %}
+                                <span class="badge bg-warning">Pending</span>
+                                {% elif report.status == 'REVIEWED' %}
+                                <span class="badge bg-info">Reviewed</span>
+                                {% elif report.status == 'RESOLVED' %}
+                                <span class="badge bg-success">Resolved</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Dismissed</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Reported On:</th>
+                            <td>{{ report.created_at|date:"M d, Y H:i" }}</td>
+                        </tr>
+                        {% if report.reviewed_by %}
+                        <tr>
+                            <th>Reviewed By:</th>
+                            <td>{{ report.reviewed_by.get_full_name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Reviewed At:</th>
+                            <td>{{ report.reviewed_at|date:"M d, Y H:i" }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            {% if report.status == 'PENDING' or report.status == 'REVIEWED' %}
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Actions</h5>
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" name="action" value="resolve" class="btn btn-success w-100 mb-2">
+                            <i class="bi bi-check-circle"></i> Mark as Resolved
+                        </button>
+                        <button type="submit" name="action" value="dismiss" class="btn btn-secondary w-100">
+                            <i class="bi bi-x-circle"></i> Dismiss Report
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
