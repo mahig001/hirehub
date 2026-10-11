@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block title %}Companies - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-lg-12">
+            <h1 class="mb-3"><i class="bi bi-building"></i> Browse Companies</h1>
+            
+            <!-- Search Form -->
+            <form method="get" class="mb-4">
+                <div class="input-group">
+                    <input type="text" name="search" class="form-control" placeholder="Search companies by name, location, or description..." value="{{ request.GET.search }}">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i> Search
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Companies Grid -->
+    {% if companies %}
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        {% for company in companies %}
+        <div class="col">
+            <div class="card h-100 shadow-sm hover-shadow">
+                <div class="card-body">
+                    <div class="d-flex align-items-start mb-3">
+                        {% if company.logo %}
+                        <img src="{{ company.logo.url }}" alt="{{ company.name }}" class="me-3" style="width: 60px; height: 60px; object-fit: contain;">
+                        {% else %}
+                        <div class="bg-light rounded me-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                            <i class="bi bi-building" style="font-size: 1.5rem; color: #6c757d;"></i>
+                        </div>
+                        {% endif %}
+                        <div class="flex-grow-1">
+                            <h5 class="card-title mb-1">{{ company.name }}</h5>
+                            <small class="text-muted">{{ company.get_industry_display }}</small>
+                        </div>
+                    </div>
+                    
+                    <p class="card-text small mb-2">
+                        <i class="bi bi-geo-alt"></i> {{ company.location }}<br>
+                        <i class="bi bi-people"></i> {{ company.get_size_display }}
+                    </p>
+                    
+                    <p class="card-text">{{ company.about|truncatewords:20 }}</p>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="{% url 'companies:detail' company.slug %}" class="btn btn-sm btn-outline-primary">
+                        View Profile <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <nav aria-label="Page navigation" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">First</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">Previous</a>
+            </li>
+            {% endif %}
+
+            <li class="page-item active">
+                <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            </li>
+
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">Next</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">Last</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-inbox" style="font-size: 5rem; color: #6c757d;"></i>
+        <h3 class="mt-3">No companies found</h3>
+        <p class="text-muted">{% if request.GET.search %}Try a different search term.{% else %}Check back later for new companies.{% endif %}</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.hover-shadow {
+    transition: box-shadow 0.3s ease-in-out;
+}
+.hover-shadow:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}Remove Employee - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h2 class="mb-0">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Remove Employee
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Are you sure you want to remove <strong>{{ object.user.get_full_name }}</strong> ({{ object.position }}) from {{ object.company.name }}?
+                    </div>
+                    
+                    <p>This employee will no longer be able to post or manage jobs for your company.</p>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash"></i> Yes, Remove Employee
+                            </button>
+                            <a href="{% url 'companies:employee_list' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

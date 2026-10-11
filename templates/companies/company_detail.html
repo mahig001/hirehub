@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ company.name }} - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Company Header -->
+    <div class="row mb-4">
+        <div class="col-lg-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-2">
+                            {% if company.logo %}
+                            <img src="{{ company.logo.url }}" alt="{{ company.name }}" class="img-fluid rounded">
+                            {% else %}
+                            <div class="bg-light rounded d-flex align-items-center justify-content-center" style="height: 120px;">
+                                <i class="bi bi-building" style="font-size: 3rem; color: #6c757d;"></i>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-7">
+                            <h1 class="mb-2">{{ company.name }}</h1>
+                            <p class="text-muted mb-2">
+                                <i class="bi bi-briefcase"></i> {{ company.get_industry_display }} |
+                                <i class="bi bi-people"></i> {{ company.get_size_display }} |
+                                <i class="bi bi-geo-alt"></i> {{ company.location }}
+                            </p>
+                            {% if company.website %}
+                            <p class="mb-0">
+                                <i class="bi bi-globe"></i>
+                                <a href="{{ company.website }}" target="_blank" rel="noopener">{{ company.website }}</a>
+                            </p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3 text-end">
+                            <span class="badge bg-{% if company.status == 'VERIFIED' %}success{% elif company.status == 'PENDING' %}warning{% elif company.status == 'REJECTED' %}danger{% elif company.status == 'SUSPENDED' %}secondary{% endif %} fs-6 mb-2">
+                                {{ company.get_status_display }}
+                            </span>
+                            {% if is_owner %}
+                            <div class="mt-2">
+                                <a href="{% url 'companies:update' company.slug %}" class="btn btn-primary btn-sm">
+                                    <i class="bi bi-pencil"></i> Edit Company
+                                </a>
+                                <a href="{% url 'companies:employee_list' %}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="bi bi-people"></i> Manage Employees
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- About Section -->
+    <div class="row mb-4">
+        <div class="col-lg-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h3 class="mb-0"><i class="bi bi-info-circle"></i> About</h3>
+                </div>
+                <div class="card-body">
+                    <p>{{ company.about|linebreaks }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Jobs Section -->
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h3 class="mb-0"><i class="bi bi-briefcase"></i> Open Positions ({{ jobs.count }})</h3>
+                    {% if is_owner %}
+                    <a href="{% url 'jobs:create' %}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus-circle"></i> Post Job
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if jobs %}
+                    <div class="list-group list-group-flush">
+                        {% for job in jobs %}
+                        <a href="{% url 'jobs:detail' job.slug %}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">{{ job.title }}</h5>
+                                <small class="text-muted">{{ job.posted_at|timesince }} ago</small>
+                            </div>
+                            <p class="mb-1">
+                                <span class="badge bg-secondary">{{ job.get_job_type_display }}</span>
+                                <span class="badge bg-info">{{ job.category }}</span>
+                                <i class="bi bi-geo-alt ms-2"></i> {{ job.location }}
+                            </p>
+                            {% if job.salary_range != 'Not specified' %}
+                            <small class="text-success"><i class="bi bi-currency-dollar"></i> {{ job.salary_range }}</small>
+                            {% endif %}
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-4">
+                        <i class="bi bi-inbox" style="font-size: 3rem;"></i><br>
+                        No open positions at the moment.
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
