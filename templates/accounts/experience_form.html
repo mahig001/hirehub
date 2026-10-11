@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if object %}Edit{% else %}Add{% endif %} Experience - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-lg-6 mx-auto">
+            <h1 class="h2 mb-4">{% if object %}Edit{% else %}Add{% endif %} Experience</h1>
+
+            <div class="card">
+                <div class="card-body">
+                    <form method="post" id="experience-form">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'accounts:profile_detail' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Save
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // Disable end_date field when is_current is checked
+    document.addEventListener('DOMContentLoaded', function() {
+        const isCurrentCheckbox = document.querySelector('#id_is_current');
+        const endDateField = document.querySelector('#id_end_date');
+        
+        if (isCurrentCheckbox && endDateField) {
+            function toggleEndDate() {
+                if (isCurrentCheckbox.checked) {
+                    endDateField.disabled = true;
+                    endDateField.value = '';
+                } else {
+                    endDateField.disabled = false;
+                }
+            }
+            
+            isCurrentCheckbox.addEventListener('change', toggleEndDate);
+            toggleEndDate(); // Run on page load
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %}

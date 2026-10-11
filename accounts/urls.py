@@ -13,8 +13,25 @@ urlpatterns = [
     path('verify/<str:token>/', views.VerifyEmailView.as_view(), name='verify_email'),
     
     # Profile management
-    path('profile/', views.ProfileUpdateView.as_view(), name='profile'),
+    path('profile/', views.ProfileDetailView.as_view(), name='profile_detail'),
+    path('profile/edit/', views.ProfileEditView.as_view(), name='profile_edit'),
+    path('profile/resume/upload/', views.ResumeUploadView.as_view(), name='resume_upload'),
+    path('profile/resume/download/<int:user_id>/', views.ResumeDownloadView.as_view(), name='resume_download'),
     path('delete/', views.DeleteAccountView.as_view(), name='delete_account'),
+    
+    # Education CRUD
+    path('education/add/', views.EducationCreateView.as_view(), name='education_create'),
+    path('education/<int:pk>/edit/', views.EducationUpdateView.as_view(), name='education_update'),
+    path('education/<int:pk>/delete/', views.EducationDeleteView.as_view(), name='education_delete'),
+    
+    # Experience CRUD
+    path('experience/add/', views.ExperienceCreateView.as_view(), name='experience_create'),
+    path('experience/<int:pk>/edit/', views.ExperienceUpdateView.as_view(), name='experience_update'),
+    path('experience/<int:pk>/delete/', views.ExperienceDeleteView.as_view(), name='experience_delete'),
+    
+    # Saved jobs
+    path('saved-jobs/', views.SavedJobsListView.as_view(), name='saved_jobs'),
+    path('jobs/<int:pk>/toggle-save/', views.toggle_saved_job, name='toggle_saved_job'),
     
     # Password reset
     path('password-reset/', views.CustomPasswordResetView.as_view(), name='password_reset'),

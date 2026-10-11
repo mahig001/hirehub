@@ -3,12 +3,13 @@ from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
-from django.views.generic import View, UpdateView, DeleteView
+from django.views.generic import View, UpdateView, DeleteView, CreateView, ListView
 from django.urls import reverse_lazy
 from django.core.signing import Signer, BadSignature, SignatureExpired
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.conf import settings
+from django.http import FileResponse, Http404, JsonResponse, HttpResponseForbidden
 from django.contrib.auth.views import (
     PasswordResetView, PasswordResetDoneView,
     PasswordResetConfirmView, PasswordResetCompleteView,
@@ -16,10 +17,12 @@ from django.contrib.auth.views import (
 )
 from .forms import (
     UserRegistrationForm, UserLoginForm, UserProfileUpdateForm,
-    CustomPasswordResetForm, CustomSetPasswordForm
+    CustomPasswordResetForm, CustomSetPasswordForm,
+    JobSeekerProfileForm, EducationForm, ExperienceForm, ResumeUploadForm
 )
-from .models import User
+from .models import User, JobSeekerProfile, Education, Experience
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -216,3 +219,243 @@ class CustomPasswordChangeView(PasswordChangeView):
 
 class CustomPasswordChangeDoneView(PasswordChangeDoneView):
     template_name = 'accounts/password_change_done.html'
+
+
+# Job Seeker Profile Views
+
+class ProfileDetailView(LoginRequiredMixin, View):
+    """View job seeker profile with completeness meter."""
+    
+    def get(self, request):
+        # Get or create job seeker profile
+        profile, created = JobSeekerProfile.objects.get_or_create(user=request.user)
+        
+        # Get education and experience
+        education_list = request.user.education_set.all()
+        experience_list = request.user.experience_set.all()
+        
+        # Calculate completeness
+        completeness = profile.calculate_completeness()
+        
+        context = {
+            'profile': profile,
+            'education_list': education_list,
+            'experience_list': experience_list,
+            'completeness': completeness,
+        }
+        return render(request, 'accounts/profile_detail.html', context)
+
+
+class ProfileEditView(LoginRequiredMixin, UpdateView):
+    """Edit job seeker profile."""
+    
+    model = JobSeekerProfile
+    form_class = JobSeekerProfileForm
+    template_name = 'accounts/profile_edit.html'
+    success_url = reverse_lazy('accounts:profile_detail')
+    
+    def get_object(self):
+        profile, created = JobSeekerProfile.objects.get_or_create(user=self.request.user)
+        return profile
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Profile updated successfully!')
+        logger.info(f'Profile updated for user: {self.request.user.email}')
+        return super().form_valid(form)
+
+
+class ResumeUploadView(LoginRequiredMixin, UpdateView):
+    """Upload resume to private storage."""
+    
+    model = JobSeekerProfile
+    form_class = ResumeUploadForm
+    template_name = 'accounts/resume_upload.html'
+    success_url = reverse_lazy('accounts:profile_detail')
+    
+    def get_object(self):
+        profile, created = JobSeekerProfile.objects.get_or_create(user=self.request.user)
+        return profile
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Resume uploaded successfully!')
+        logger.info(f'Resume uploaded for user: {self.request.user.email}')
+        return super().form_valid(form)
+
+
+class ResumeDownloadView(LoginRequiredMixin, View):
+    """Download resume with permission check."""
+    
+    def get(self, request, user_id):
+        # Get the profile
+        profile = get_object_or_404(JobSeekerProfile, user_id=user_id)
+        
+        # Check permissions: owner or recruiter viewing application
+        if request.user.id == user_id:
+            # User viewing their own resume
+            pass
+        elif request.user.role == User.EMPLOYEE:
+            # Recruiter can view resumes of applicants
+            # TODO: Add check if recruiter has application from this user
+            pass
+        else:
+            logger.warning(
+                f'Unauthorized resume access attempt by {request.user.email} '
+                f'for user {user_id}'
+            )
+            return HttpResponseForbidden('You do not have permission to view this resume.')
+        
+        # Check if resume exists
+        if not profile.resume:
+            raise Http404('Resume not found.')
+        
+        # Serve the file
+        try:
+            response = FileResponse(profile.resume.open('rb'))
+            response['Content-Disposition'] = f'attachment; filename="{os.path.basename(profile.resume.name)}"'
+            logger.info(f'Resume downloaded: {profile.resume.name} by {request.user.email}')
+            return response
+        except FileNotFoundError:
+            raise Http404('Resume file not found.')
+
+
+# Education CRUD Views
+
+class EducationCreateView(LoginRequiredMixin, CreateView):
+    """Create education entry."""
+    
+    model = Education
+    form_class = EducationForm
+    template_name = 'accounts/education_form.html'
+    success_url = reverse_lazy('accounts:profile_detail')
+    
+    def form_valid(self, form):
+        form.instance.user = self.request.user
+        messages.success(self.request, 'Education added successfully!')
+        logger.info(f'Education added for user: {self.request.user.email}')
+        return super().form_valid(form)
+
+
+class EducationUpdateView(LoginRequiredMixin, UpdateView):
+    """Update education entry."""
+    
+    model = Education
+    form_class = EducationForm
+    template_name = 'accounts/education_form.html'
+    success_url = reverse_lazy('accounts:profile_detail')
+    
+    def get_queryset(self):
+        # Only allow users to edit their own education
+        return Education.objects.filter(user=self.request.user)
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Education updated successfully!')
+        return super().form_valid(form)
+
+
+class EducationDeleteView(LoginRequiredMixin, DeleteView):
+    """Delete education entry."""
+    
+    model = Education
+    template_name = 'accounts/education_confirm_delete.html'
+    success_url = reverse_lazy('accounts:profile_detail')
+    
+    def get_queryset(self):
+        # Only allow users to delete their own education
+        return Education.objects.filter(user=self.request.user)
+    
+    def delete(self, request, *args, **kwargs):
+        messages.success(request, 'Education deleted successfully!')
+        return super().delete(request, *args, **kwargs)
+
+
+# Experience CRUD Views
+
+class ExperienceCreateView(LoginRequiredMixin, CreateView):
+    """Create experience entry."""
+    
+    model = Experience
+    form_class = ExperienceForm
+    template_name = 'accounts/experience_form.html'
+    success_url = reverse_lazy('accounts:profile_detail')
+    
+    def form_valid(self, form):
+        form.instance.user = self.request.user
+        messages.success(self.request, 'Experience added successfully!')
+        logger.info(f'Experience added for user: {self.request.user.email}')
+        return super().form_valid(form)
+
+
+class ExperienceUpdateView(LoginRequiredMixin, UpdateView):
+    """Update experience entry."""
+    
+    model = Experience
+    form_class = ExperienceForm
+    template_name = 'accounts/experience_form.html'
+    success_url = reverse_lazy('accounts:profile_detail')
+    
+    def get_queryset(self):
+        # Only allow users to edit their own experience
+        return Experience.objects.filter(user=self.request.user)
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Experience updated successfully!')
+        return super().form_valid(form)
+
+
+class ExperienceDeleteView(LoginRequiredMixin, DeleteView):
+    """Delete experience entry."""
+    
+    model = Experience
+    template_name = 'accounts/experience_confirm_delete.html'
+    success_url = reverse_lazy('accounts:profile_detail')
+    
+    def get_queryset(self):
+        # Only allow users to delete their own experience
+        return Experience.objects.filter(user=self.request.user)
+    
+    def delete(self, request, *args, **kwargs):
+        messages.success(request, 'Experience deleted successfully!')
+        return super().delete(request, *args, **kwargs)
+
+
+# Saved Jobs Views
+
+class SavedJobsListView(LoginRequiredMixin, ListView):
+    """List user's saved jobs."""
+    
+    model = JobSeekerProfile
+    template_name = 'accounts/saved_jobs.html'
+    context_object_name = 'saved_jobs'
+    
+    def get_queryset(self):
+        profile, created = JobSeekerProfile.objects.get_or_create(user=self.request.user)
+        return profile.saved_jobs.all()
+
+
+@login_required
+def toggle_saved_job(request, pk):
+    """Toggle saved job (add/remove from saved_jobs M2M)."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    
+    # Import here to avoid circular import
+    from jobs.models import Job
+    
+    job = get_object_or_404(Job, pk=pk)
+    profile, created = JobSeekerProfile.objects.get_or_create(user=request.user)
+    
+    if job in profile.saved_jobs.all():
+        profile.saved_jobs.remove(job)
+        saved = False
+        message = 'Job removed from saved jobs.'
+    else:
+        profile.saved_jobs.add(job)
+        saved = True
+        message = 'Job saved successfully!'
+    
+    logger.info(f'User {request.user.email} {"saved" if saved else "unsaved"} job {job.id}')
+    
+    return JsonResponse({
+        'saved': saved,
+        'message': message
+    })

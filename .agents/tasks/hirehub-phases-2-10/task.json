@@ -1,0 +1,17 @@
+{
+  "task_id": "hirehub-phases-2-10",
+  "task_description": "Complete HireHub job platform: Companies & Jobs, Job Seeker Profiles, Applications, Employee Dashboard, Admin Console, Notifications, Hardening, DevOps, Final Verification",
+  "status": "pending",
+  "feature_order": [
+    "FEAT-001",
+    "FEAT-002",
+    "FEAT-003",
+    "FEAT-004",
+    "FEAT-005",
+    "FEAT-006",
+    "FEAT-007",
+    "FEAT-008",
+    "FEAT-009"
+  ],
+  "blocked_reason": null
+}

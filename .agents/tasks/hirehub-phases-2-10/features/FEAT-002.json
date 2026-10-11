@@ -1,0 +1,52 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Phase 3: Job Seeker Profiles. Implement JobSeekerProfile model with headline, bio, location, phone, and profile completeness calculation. Add Education and Experience models with full CRUD. Implement resume upload with private storage and permission-checked serving view. Add saved jobs M2M relationship and toggle functionality. Build profile view/edit pages with completeness meter showing percentage of filled fields.",
+  "status": "pending",
+  "steps": [
+    "1. Create JobSeekerProfile model in accounts/models.py (or new app) with OneToOne to User (role=USER), headline, bio, location, phone, avatar, resume FileField with upload_to='private/resumes/', saved_jobs M2M to Job, created_at, updated_at. Add method calculate_completeness() returning 0-100 based on filled fields (bio, location, phone, avatar, resume, education_set count, experience_set count).",
+    "2. Create Education model with FK to User, degree, field_of_study, institution, start_date, end_date, description. Add ordering by -start_date.",
+    "3. Create Experience model with FK to User, title, company_name, location, start_date, end_date (nullable for current job), description, is_current boolean. Add ordering by -start_date.",
+    "4. Create admin for JobSeekerProfile, Education, Experience in accounts/admin.py or dedicated admin file",
+    "5. Create forms in accounts/forms.py or profiles/forms.py: JobSeekerProfileForm (headline, bio, location, phone, avatar), EducationForm (all fields with date widgets), ExperienceForm (all fields with is_current checkbox to disable end_date). All with Bootstrap styling.",
+    "6. Create ResumeUploadForm with FileField, validation for file size (MAX_RESUME_SIZE_MB from settings) and type (ALLOWED_RESUME_TYPES from settings)",
+    "7. Create views for profile management: ProfileDetailView (show completeness meter, education list, experience list, resume download link), ProfileEditView (edit headline/bio/location/phone/avatar), ResumeUploadView (handle resume upload to private storage), ResumeDownloadView (permission check: owner or EMPLOYEE viewing applicant)",
+    "8. Create Education CRUD views: EducationCreateView, EducationUpdateView, EducationDeleteView (all require ownership check)",
+    "9. Create Experience CRUD views: ExperienceCreateView, ExperienceUpdateView, ExperienceDeleteView (all require ownership check)",
+    "10. Create SavedJobsListView (user's saved jobs) and toggle_saved_job view (AJAX-friendly add/remove from saved_jobs M2M)",
+    "11. Create URL patterns in accounts/urls.py: profile/, profile/edit/, profile/resume/upload/, profile/resume/download/, education/add/, education/<pk>/edit/, education/<pk>/delete/, experience/add/, experience/<pk>/edit/, experience/<pk>/delete/, saved-jobs/, jobs/<int:pk>/toggle-save/",
+    "12. Create templates: profile_detail.html (show completeness progress bar using Bootstrap, education/experience cards, resume status), profile_edit.html (crispy form), resume_upload.html (file upload form), education_form.html, experience_form.html, saved_jobs.html (list of saved jobs with unsave button)",
+    "13. Add 'Save Job' button to job_detail.html template with AJAX toggle functionality using fetch API",
+    "14. Update navbar to show 'My Profile' and 'Saved Jobs' links for USER role",
+    "15. Run makemigrations for new models",
+    "16. Run migrate",
+    "17. Write model tests for calculate_completeness() method",
+    "18. Write view tests for resume download permission checks"
+  ],
+  "acceptance_criteria": [
+    "JobSeekerProfile model with calculate_completeness() method returning 0-100",
+    "Education and Experience models with proper date ordering",
+    "Resume upload restricted to PDF/DOC/DOCX, max 5MB (from settings)",
+    "Resume stored in private/ directory, served via permission-checked view (owner or recruiter viewing application)",
+    "Profile page shows completeness meter (Bootstrap progress bar) with percentage",
+    "Job seekers can add/edit/delete education and experience entries",
+    "Job seekers can save/unsave jobs (M2M toggle) from job detail page",
+    "Saved jobs page lists all saved jobs with unsave button",
+    "All forms use crispy_forms with Bootstrap 5.3 styling",
+    "Tests cover completeness calculation and resume download permissions"
+  ],
+  "verification": [
+    "Run: C:\\Users\\arjun\\mahi\\venv\\Scripts\\python.exe manage.py makemigrations",
+    "Run: C:\\Users\\arjun\\mahi\\venv\\Scripts\\python.exe manage.py migrate",
+    "Run: C:\\Users\\arjun\\mahi\\venv\\Scripts\\python.exe manage.py check --deploy",
+    "Register as USER (job seeker), access profile page, verify completeness shows 0-20%",
+    "Add bio, location, phone - verify completeness increases",
+    "Upload resume (test with PDF and oversized file to verify validation)",
+    "Add education and experience - verify completeness reaches higher percentage",
+    "Save a job from job detail page, verify it appears in saved jobs",
+    "Attempt to access another user's resume URL - verify 403 Forbidden",
+    "Run: C:\\Users\\arjun\\mahi\\venv\\Scripts\\python.exe manage.py test accounts"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

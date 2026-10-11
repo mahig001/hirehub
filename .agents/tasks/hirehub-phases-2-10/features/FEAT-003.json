@@ -1,0 +1,53 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Phase 4: Applications. Implement Application model with status field (PENDING, REVIEWING, SHORTLISTED, REJECTED, WITHDRAWN) and ApplicationStatusHistory for audit trail. Create applications/services.py for status transition logic and email notifications. Build apply flow with withdraw capability, and job seeker dashboard showing application list with status timeline/history.",
+  "status": "pending",
+  "steps": [
+    "1. Create Application model in applications/models.py with FK to Job, FK to User (applicant), cover_letter TextField, status CharField with choices (PENDING, REVIEWING, SHORTLISTED, REJECTED, WITHDRAWN), applied_at DateTimeField, updated_at. Add unique_together (job, applicant) to prevent duplicate applications. Add index on status field.",
+    "2. Create ApplicationStatusHistory model with FK to Application, old_status, new_status, changed_by FK to User, changed_at DateTimeField, note TextField. Add ordering by -changed_at.",
+    "3. Create applications/services.py with ApplicationService class containing methods: create_application(job, applicant, cover_letter), change_status(application, new_status, changed_by, note), withdraw_application(application, user), get_status_history(application). Each method should create ApplicationStatusHistory records and send email notifications via notification signals.",
+    "4. Create ApplicationForm in applications/forms.py with cover_letter TextField (optional), Bootstrap styling with crispy forms",
+    "5. Create ApplicationFilterSet using django_filters for status, job, date range filtering",
+    "6. Create admin for Application and ApplicationStatusHistory in applications/admin.py with list_display, list_filter, search_fields, inline for history",
+    "7. Create views in applications/views.py: ApplyView (create application, USER only, check not already applied), WithdrawApplicationView (set status to WITHDRAWN via service), ApplicationDetailView (applicant can view own, recruiter can view for their jobs), MyApplicationsListView (job seeker's applications with filters)",
+    "8. Create JobApplicantsListView in applications/views.py (EMPLOYEE only, shows applicants for a specific job with status filter, accessible only to job's company owner/employees)",
+    "9. Create ApplicationStatusTimelineView (returns status history for display in modal or accordion)",
+    "10. Create URL patterns in applications/urls.py with app_name='applications': jobs/<int:job_pk>/apply/, <int:pk>/, <int:pk>/withdraw/, my-applications/, <int:pk>/timeline/",
+    "11. Add URL pattern in jobs/urls.py or create in applications/urls.py: jobs/<int:pk>/applicants/ (lists applicants for that job)",
+    "12. Create templates: apply_form.html (job info + cover letter form), application_detail.html (show job, cover letter, status, timeline), my_applications.html (list with status badges, filters, timeline button), applicants_list.html (for recruiters, table with applicant info, status, actions)",
+    "13. Update job_detail.html to show 'Apply Now' button (USER only, check if already applied, if not show button; if applied show status badge)",
+    "14. Add 'My Applications' link to navbar for USER role",
+    "15. Run makemigrations for applications app",
+    "16. Run migrate",
+    "17. Write tests for ApplicationService methods (create, change_status, withdraw)",
+    "18. Write view tests for apply (duplicate prevention), withdraw (ownership check), applicants list (permission check)"
+  ],
+  "acceptance_criteria": [
+    "Application model with status choices and unique constraint preventing duplicate applications",
+    "ApplicationStatusHistory tracks every status change with user, timestamp, and note",
+    "ApplicationService handles all status transitions and creates history records",
+    "Job seekers can apply to jobs with optional cover letter",
+    "Job seekers cannot apply twice to same job (form validation or view check)",
+    "Job seekers can withdraw their applications (status → WITHDRAWN)",
+    "Job seeker dashboard shows all applications with status badges and timeline view",
+    "Timeline view displays status history in chronological order with who changed, when, and notes",
+    "Recruiters can view applicants list for their company's jobs (permission enforced)",
+    "All status changes logged in ApplicationStatusHistory",
+    "Tests verify duplicate prevention, withdrawal permissions, and service logic"
+  ],
+  "verification": [
+    "Run: C:\\Users\\arjun\\mahi\\venv\\Scripts\\python.exe manage.py makemigrations applications",
+    "Run: C:\\Users\\arjun\\mahi\\venv\\Scripts\\python.exe manage.py migrate",
+    "Run: C:\\Users\\arjun\\mahi\\venv\\Scripts\\python.exe manage.py check --deploy",
+    "As job seeker: apply to a job, verify application created with PENDING status",
+    "Try to apply again to same job - verify error/prevention",
+    "Withdraw application, verify status changes to WITHDRAWN and history record created",
+    "View application detail, verify timeline shows status changes",
+    "As recruiter: view applicants list for company job, verify only that job's applicants shown",
+    "Attempt to view applicants for another company's job - verify 403",
+    "Run: C:\\Users\\arjun\\mahi\\venv\\Scripts\\python.exe manage.py test applications"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
