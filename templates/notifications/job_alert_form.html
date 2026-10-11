@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if form.instance.pk %}Edit{% else %}Create{% endif %} Job Alert - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="bi bi-bell-fill"></i> 
+                        {% if form.instance.pk %}Edit{% else %}Create{% endif %} Job Alert
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">
+                        Set up a job alert to receive email notifications when new jobs matching your criteria are posted.
+                    </p>
+                    {% crispy form %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

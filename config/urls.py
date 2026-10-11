@@ -25,6 +25,9 @@ urlpatterns = [
     # Applications app
     path('applications/', include('applications.urls')),
     
+    # Notifications app
+    path('notifications/', include('notifications.urls')),
+    
     # Dashboard app
     path('employee/', include('dashboard.urls')),
 ]
