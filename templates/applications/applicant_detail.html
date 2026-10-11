@@ -1,0 +1,322 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ application.applicant.get_full_name }} - Application Details{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Applicant Details</h1>
+        <a href="{% url 'applications:job_applicants' application.job.pk %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Applicants
+        </a>
+    </div>
+    
+    <!-- Applicant Header -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-8">
+                    <h3>{{ application.applicant.get_full_name }}</h3>
+                    <p class="text-muted mb-2">
+                        <i class="bi bi-envelope"></i> {{ application.applicant.email }}
+                    </p>
+                    <p class="mb-2">
+                        <strong>Job:</strong> {{ application.job.title }}
+                    </p>
+                    <p class="mb-2">
+                        <strong>Applied:</strong> {{ application.applied_at|date:"M d, Y H:i" }}
+                    </p>
+                    <p class="mb-0">
+                        <strong>Status:</strong>
+                        {% if application.status == 'PENDING' %}
+                            <span class="badge bg-warning">{{ application.get_status_display }}</span>
+                        {% elif application.status == 'REVIEWING' %}
+                            <span class="badge bg-info">{{ application.get_status_display }}</span>
+                        {% elif application.status == 'SHORTLISTED' %}
+                            <span class="badge bg-success">{{ application.get_status_display }}</span>
+                        {% elif application.status == 'REJECTED' %}
+                            <span class="badge bg-danger">{{ application.get_status_display }}</span>
+                        {% elif application.status == 'WITHDRAWN' %}
+                            <span class="badge bg-secondary">{{ application.get_status_display }}</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-4 text-end">
+                    {% if application.rating %}
+                        <div class="mb-2">
+                            <strong>Rating:</strong>
+                            {% for i in "12345" %}
+                                {% if forloop.counter <= application.rating %}
+                                    <i class="bi bi-star-fill text-warning"></i>
+                                {% else %}
+                                    <i class="bi bi-star text-muted"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    {% if application.applicant.job_seeker_profile.resume %}
+                        <a href="{{ application.applicant.job_seeker_profile.resume.url }}" class="btn btn-primary" target="_blank">
+                            <i class="bi bi-download"></i> Download Resume
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-4" id="applicantTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button">Overview</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="application-tab" data-bs-toggle="tab" data-bs-target="#application" type="button">Application</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="interviews-tab" data-bs-toggle="tab" data-bs-target="#interviews" type="button">Interviews ({{ interviews|length }})</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="notes-tab" data-bs-toggle="tab" data-bs-target="#notes" type="button">Notes</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="actions-tab" data-bs-toggle="tab" data-bs-target="#actions" type="button">Actions</button>
+        </li>
+    </ul>
+    
+    <div class="tab-content">
+        <!-- Overview Tab -->
+        <div class="tab-pane fade show active" id="overview">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">Profile Information</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if application.applicant.job_seeker_profile %}
+                                {% with profile=application.applicant.job_seeker_profile %}
+                                    <p><strong>Headline:</strong> {{ profile.headline|default:"Not provided" }}</p>
+                                    <p><strong>Location:</strong> {{ profile.location|default:"Not provided" }}</p>
+                                    <p><strong>Phone:</strong> {{ profile.phone|default:"Not provided" }}</p>
+                                    <p class="mb-0"><strong>Bio:</strong></p>
+                                    <p>{{ profile.bio|default:"Not provided" }}</p>
+                                {% endwith %}
+                            {% else %}
+                                <p class="text-muted">No profile information available.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">Status History</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if status_history %}
+                                <ul class="list-unstyled">
+                                    {% for history in status_history %}
+                                        <li class="mb-2">
+                                            <strong>{{ history.new_status }}</strong>
+                                            <br>
+                                            <small class="text-muted">
+                                                {{ history.changed_at|date:"M d, Y H:i" }} by {{ history.changed_by.get_full_name }}
+                                                {% if history.note %}<br>{{ history.note }}{% endif %}
+                                            </small>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="text-muted mb-0">No history available.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Application Tab -->
+        <div class="tab-pane fade" id="application">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Cover Letter</h5>
+                </div>
+                <div class="card-body">
+                    {% if application.cover_letter %}
+                        <p style="white-space: pre-wrap;">{{ application.cover_letter }}</p>
+                    {% else %}
+                        <p class="text-muted mb-0">No cover letter provided.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Interviews Tab -->
+        <div class="tab-pane fade" id="interviews">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Schedule New Interview</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'applications:schedule_interview' application.pk %}">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Scheduled Date & Time</label>
+                                {{ interview_form.scheduled_at }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Interview Type</label>
+                                {{ interview_form.interview_type }}
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Location / Link</label>
+                            {{ interview_form.location }}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            {{ interview_form.notes }}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Interviewer (optional)</label>
+                            {{ interview_form.interviewer }}
+                        </div>
+                        <button type="submit" class="btn btn-primary">Schedule Interview</button>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Scheduled Interviews</h5>
+                </div>
+                <div class="card-body">
+                    {% if interviews %}
+                        {% for interview in interviews %}
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <h6>{{ interview.get_interview_type_display }} Interview</h6>
+                                            <p class="mb-1"><strong>Date:</strong> {{ interview.scheduled_at|date:"M d, Y H:i" }}</p>
+                                            <p class="mb-1"><strong>Location:</strong> {{ interview.location }}</p>
+                                            {% if interview.interviewer %}
+                                                <p class="mb-1"><strong>Interviewer:</strong> {{ interview.interviewer.get_full_name }}</p>
+                                            {% endif %}
+                                            {% if interview.notes %}
+                                                <p class="mb-1"><strong>Notes:</strong> {{ interview.notes }}</p>
+                                            {% endif %}
+                                        </div>
+                                        {% if interview.rating %}
+                                            <div>
+                                                {% for i in "12345" %}
+                                                    {% if forloop.counter <= interview.rating %}
+                                                        <i class="bi bi-star-fill text-warning"></i>
+                                                    {% else %}
+                                                        <i class="bi bi-star text-muted"></i>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted mb-0">No interviews scheduled.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Notes Tab -->
+        <div class="tab-pane fade" id="notes">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Add Note</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'applications:add_note' application.pk %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <textarea name="note" class="form-control" rows="3" placeholder="Add a private note about this applicant..." required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Add Note</button>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Recruiter Notes</h5>
+                </div>
+                <div class="card-body">
+                    {% if application.recruiter_notes %}
+                        <div style="white-space: pre-wrap;">{{ application.recruiter_notes }}</div>
+                    {% else %}
+                        <p class="text-muted mb-0">No notes yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Actions Tab -->
+        <div class="tab-pane fade" id="actions">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">Update Status</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" action="{% url 'applications:update_status' application.pk %}">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label class="form-label">New Status</label>
+                                    <select name="status" class="form-select" required>
+                                        {% for value, label in status_choices %}
+                                            <option value="{{ value }}" {% if value == application.status %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Note (optional)</label>
+                                    <textarea name="note" class="form-control" rows="2" placeholder="Add a note about this status change..."></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Update Status</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Rate Applicant</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" action="{% url 'applications:rate_applicant' application.pk %}">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label class="form-label">Rating (1-5 stars)</label>
+                                    <select name="rating" class="form-select" required>
+                                        <option value="">Select rating...</option>
+                                        {% for i in "12345" %}
+                                            <option value="{{ forloop.counter }}" {% if application.rating == forloop.counter %}selected{% endif %}>
+                                                {{ forloop.counter }} Star{% if forloop.counter > 1 %}s{% endif %}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Set Rating</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -443,3 +443,279 @@ class ApplicationViewTests(TestCase):
         response = self.client.get(reverse('applications:detail', kwargs={'pk': app.pk}))
         
         self.assertEqual(response.status_code, 404)
+
+
+class InterviewModelTests(TestCase):
+    """Test Interview model."""
+    
+    def setUp(self):
+        """Set up test data."""
+        self.job_seeker = User.objects.create_user(
+            email='seeker@test.com',
+            password='testpass123',
+            role='USER'
+        )
+        
+        self.recruiter = User.objects.create_user(
+            email='recruiter@test.com',
+            password='testpass123',
+            role='EMPLOYEE'
+        )
+        
+        self.company = Company.objects.create(
+            owner=self.recruiter,
+            name='Test Company',
+            industry='technology',
+            size='11-50',
+            location='San Francisco',
+            about='A test company'
+        )
+        
+        self.category = Category.objects.create(name='Software Engineering')
+        
+        self.job = Job.objects.create(
+            company=self.company,
+            title='Senior Engineer',
+            description='A senior engineering role',
+            category=self.category,
+            location='San Francisco',
+            job_type='FULL_TIME',
+            is_active=True,
+            is_approved=True
+        )
+        
+        self.application = ApplicationService.create_application(
+            job=self.job,
+            applicant=self.job_seeker
+        )
+    
+    def test_interview_creation(self):
+        """Test creating an interview."""
+        from applications.models import Interview
+        from datetime import datetime, timedelta
+        
+        scheduled_time = datetime.now() + timedelta(days=1)
+        
+        interview = Interview.objects.create(
+            application=self.application,
+            scheduled_at=scheduled_time,
+            interview_type='VIDEO',
+            location='https://zoom.us/j/123456',
+            notes='Technical round',
+            interviewer=self.recruiter
+        )
+        
+        self.assertEqual(interview.application, self.application)
+        self.assertEqual(interview.interview_type, 'VIDEO')
+        self.assertEqual(interview.location, 'https://zoom.us/j/123456')
+        self.assertEqual(interview.interviewer, self.recruiter)
+
+
+class ExtendedApplicationServiceTests(TestCase):
+    """Test extended ApplicationService methods."""
+    
+    def setUp(self):
+        """Set up test data."""
+        self.job_seeker = User.objects.create_user(
+            email='seeker@test.com',
+            password='testpass123',
+            role='USER'
+        )
+        
+        self.recruiter = User.objects.create_user(
+            email='recruiter@test.com',
+            password='testpass123',
+            role='EMPLOYEE'
+        )
+        
+        self.company = Company.objects.create(
+            owner=self.recruiter,
+            name='Test Company',
+            industry='technology',
+            size='11-50',
+            location='San Francisco',
+            about='A test company'
+        )
+        
+        self.category = Category.objects.create(name='Software Engineering')
+        
+        self.job = Job.objects.create(
+            company=self.company,
+            title='Senior Engineer',
+            description='A senior engineering role',
+            category=self.category,
+            location='San Francisco',
+            job_type='FULL_TIME',
+            is_active=True,
+            is_approved=True
+        )
+        
+        self.application = ApplicationService.create_application(
+            job=self.job,
+            applicant=self.job_seeker
+        )
+    
+    def test_bulk_change_status(self):
+        """Test bulk status change."""
+        app2 = ApplicationService.create_application(
+            self.job,
+            User.objects.create_user(
+                email='seeker2@test.com',
+                password='testpass123',
+                role='USER'
+            )
+        )
+        
+        app3 = ApplicationService.create_application(
+            self.job,
+            User.objects.create_user(
+                email='seeker3@test.com',
+                password='testpass123',
+                role='USER'
+            )
+        )
+        
+        application_ids = [self.application.id, app2.id, app3.id]
+        
+        updated = ApplicationService.bulk_change_status(
+            application_ids,
+            Application.REVIEWING,
+            self.recruiter,
+            'Bulk review started'
+        )
+        
+        self.assertEqual(len(updated), 3)
+        
+        # Refresh and check
+        self.application.refresh_from_db()
+        app2.refresh_from_db()
+        app3.refresh_from_db()
+        
+        self.assertEqual(self.application.status, Application.REVIEWING)
+        self.assertEqual(app2.status, Application.REVIEWING)
+        self.assertEqual(app3.status, Application.REVIEWING)
+    
+    def test_add_applicant_note(self):
+        """Test adding a note to application."""
+        note_text = 'Great candidate with strong Python skills'
+        
+        ApplicationService.add_applicant_note(self.application, note_text)
+        
+        self.application.refresh_from_db()
+        self.assertIn(note_text, self.application.recruiter_notes)
+        self.assertIn('[', self.application.recruiter_notes)  # Timestamp marker
+    
+    def test_rate_applicant(self):
+        """Test rating an applicant."""
+        ApplicationService.rate_applicant(self.application, 4)
+        
+        self.application.refresh_from_db()
+        self.assertEqual(self.application.rating, 4)
+    
+    def test_rate_applicant_invalid(self):
+        """Test that invalid ratings are rejected."""
+        with self.assertRaises(ValidationError):
+            ApplicationService.rate_applicant(self.application, 6)
+        
+        with self.assertRaises(ValidationError):
+            ApplicationService.rate_applicant(self.application, 0)
+
+
+class EmployeeViewTests(TestCase):
+    """Test employee-specific views."""
+    
+    def setUp(self):
+        """Set up test data."""
+        self.client = Client()
+        
+        self.job_seeker = User.objects.create_user(
+            email='seeker@test.com',
+            password='testpass123',
+            role='USER'
+        )
+        
+        self.recruiter = User.objects.create_user(
+            email='recruiter@test.com',
+            password='testpass123',
+            role='EMPLOYEE'
+        )
+        
+        self.other_recruiter = User.objects.create_user(
+            email='other@test.com',
+            password='testpass123',
+            role='EMPLOYEE'
+        )
+        
+        self.company = Company.objects.create(
+            owner=self.recruiter,
+            name='Test Company',
+            industry='technology',
+            size='11-50',
+            location='San Francisco',
+            about='A test company'
+        )
+        
+        self.other_company = Company.objects.create(
+            owner=self.other_recruiter,
+            name='Other Company',
+            industry='finance',
+            size='51-200',
+            location='New York',
+            about='Another company'
+        )
+        
+        self.category = Category.objects.create(name='Software Engineering')
+        
+        self.job = Job.objects.create(
+            company=self.company,
+            title='Senior Engineer',
+            description='A senior engineering role',
+            category=self.category,
+            location='San Francisco',
+            job_type='FULL_TIME',
+            is_active=True,
+            is_approved=True
+        )
+        
+        self.application = ApplicationService.create_application(
+            self.job,
+            self.job_seeker
+        )
+    
+    def test_bulk_action_view_permission(self):
+        """Test that non-employees cannot access bulk action view."""
+        self.client.force_login(self.job_seeker)
+        
+        response = self.client.post(
+            reverse('applications:bulk_action', kwargs={'job_pk': self.job.pk}),
+            {
+                'application_ids': [self.application.pk],
+                'action': 'REVIEWING'
+            }
+        )
+        
+        # Should get 302 (redirect) or 403
+        self.assertIn(response.status_code, [302, 403])
+    
+    def test_export_csv_view(self):
+        """Test CSV export returns correct content type."""
+        self.client.force_login(self.recruiter)
+        
+        response = self.client.get(
+            reverse('applications:export_csv', kwargs={'job_pk': self.job.pk})
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'text/csv')
+        self.assertIn('attachment', response['Content-Disposition'])
+    
+    def test_applicant_detail_view_company_check(self):
+        """Test that recruiters can only view applicants for their company's jobs."""
+        self.client.force_login(self.other_recruiter)
+        
+        response = self.client.get(
+            reverse('applications:applicant_detail', kwargs={'pk': self.application.pk})
+        )
+        
+        # Should get 404 since application is not for their company
+        self.assertEqual(response.status_code, 404)

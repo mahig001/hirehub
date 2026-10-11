@@ -24,6 +24,9 @@ urlpatterns = [
     
     # Applications app
     path('applications/', include('applications.urls')),
+    
+    # Dashboard app
+    path('employee/', include('dashboard.urls')),
 ]
 
 # Serve media files in development

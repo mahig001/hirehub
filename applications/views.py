@@ -1,18 +1,22 @@
 """Views for job applications."""
+import csv
 import logging
+from datetime import datetime, timedelta
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import CreateView, DetailView, ListView, View
 from django.contrib import messages
 from django.urls import reverse, reverse_lazy
 from django.core.exceptions import ValidationError, PermissionDenied
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
+from django.db.models import Q
 from django_filters.views import FilterView
 from jobs.models import Job
 from companies.models import Company
-from .models import Application, ApplicationStatusHistory
-from .forms import ApplicationForm
-from .filters import ApplicationFilterSet
+from accounts.mixins import EmployeeRoleMixin
+from .models import Application, ApplicationStatusHistory, Interview
+from .forms import ApplicationForm, InterviewForm
+from .filters import ApplicationFilterSet, ApplicantFilterSet
 from .services import ApplicationService
 
 logger = logging.getLogger(__name__)
@@ -153,18 +157,14 @@ class WithdrawApplicationView(LoginRequiredMixin, UserPassesTestMixin, View):
         return redirect('core:home')
 
 
-class JobApplicantsListView(LoginRequiredMixin, UserPassesTestMixin, FilterView):
+class JobApplicantsListView(EmployeeRoleMixin, FilterView):
     """View for recruiters to see applicants for a job."""
     
     model = Application
     template_name = 'applications/applicants_list.html'
     context_object_name = 'applications'
-    filterset_class = ApplicationFilterSet
+    filterset_class = ApplicantFilterSet
     paginate_by = 20
-    
-    def test_func(self):
-        """Only employees/recruiters can view this."""
-        return self.request.user.role == 'EMPLOYEE'
     
     def get_job(self):
         """Get the job for which applicants are being viewed."""
@@ -185,21 +185,246 @@ class JobApplicantsListView(LoginRequiredMixin, UserPassesTestMixin, FilterView)
         
         return super().dispatch(request, *args, **kwargs)
     
+    def get_filterset_kwargs(self, *args, **kwargs):
+        """Pass company to filterset."""
+        kwargs = super().get_filterset_kwargs(*args, **kwargs)
+        kwargs['company'] = self.request.user.company
+        return kwargs
+    
     def get_queryset(self):
-        """Get applications for this job."""
+        """Get applications for this job with sorting."""
         job = self.get_job()
-        return Application.objects.filter(job=job).select_related('applicant').order_by('-applied_at')
+        queryset = Application.objects.filter(job=job).select_related(
+            'applicant', 'applicant__job_seeker_profile'
+        )
+        
+        # Apply sorting
+        sort_by = self.request.GET.get('sort_by', 'date')
+        if sort_by == 'rating':
+            queryset = queryset.order_by('-rating', '-applied_at')
+        elif sort_by == 'name':
+            queryset = queryset.order_by('applicant__first_name', 'applicant__last_name')
+        else:  # default: date
+            queryset = queryset.order_by('-applied_at')
+        
+        return queryset
     
     def get_context_data(self, **kwargs):
-        """Add job to context."""
+        """Add job and sort parameter to context."""
         context = super().get_context_data(**kwargs)
         context['job'] = self.get_job()
+        context['sort_by'] = self.request.GET.get('sort_by', 'date')
         return context
+
+
+class ApplicantDetailView(EmployeeRoleMixin, DetailView):
+    """View for recruiters to see applicant details."""
     
-    def handle_no_permission(self):
-        """Redirect non-recruiters with error message."""
-        messages.error(self.request, 'Only recruiters can view job applicants.')
-        return redirect('core:home')
+    model = Application
+    template_name = 'applications/applicant_detail.html'
+    context_object_name = 'application'
+    
+    def get_queryset(self):
+        """Only show applications for user's company."""
+        try:
+            company = self.request.user.company
+            return Application.objects.filter(job__company=company).select_related(
+                'job', 'applicant', 'applicant__job_seeker_profile'
+            ).prefetch_related('interviews')
+        except Company.DoesNotExist:
+            return Application.objects.none()
+    
+    def get_context_data(self, **kwargs):
+        """Add interview form and related data to context."""
+        context = super().get_context_data(**kwargs)
+        context['status_history'] = ApplicationService.get_status_history(self.object)
+        context['interviews'] = self.object.interviews.all().order_by('scheduled_at')
+        context['interview_form'] = InterviewForm()
+        context['status_choices'] = Application.STATUS_CHOICES
+        return context
+
+
+class ScheduleInterviewView(EmployeeRoleMixin, View):
+    """View for recruiters to schedule an interview."""
+    
+    def post(self, request, pk):
+        """Create interview via service."""
+        application = get_object_or_404(
+            Application.objects.select_related('job'),
+            pk=pk,
+            job__company=request.user.company
+        )
+        
+        form = InterviewForm(request.POST)
+        if form.is_valid():
+            try:
+                interview_data = {
+                    'scheduled_at': form.cleaned_data['scheduled_at'],
+                    'interview_type': form.cleaned_data['interview_type'],
+                    'location': form.cleaned_data['location'],
+                    'notes': form.cleaned_data.get('notes', ''),
+                    'interviewer': form.cleaned_data.get('interviewer'),
+                    'rating': None
+                }
+                ApplicationService.schedule_interview(application, interview_data, request.user)
+                messages.success(request, 'Interview scheduled successfully.')
+                logger.info(f'Interview scheduled for application {application.id} by {request.user.email}')
+            except ValidationError as e:
+                messages.error(request, str(e))
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f'{field}: {error}')
+        
+        return redirect('applications:applicant_detail', pk=pk)
+
+
+class UpdateApplicantStatusView(EmployeeRoleMixin, View):
+    """View for recruiters to update applicant status."""
+    
+    def post(self, request, pk):
+        """Change status with note via ApplicationService."""
+        application = get_object_or_404(
+            Application,
+            pk=pk,
+            job__company=request.user.company
+        )
+        
+        new_status = request.POST.get('status')
+        note = request.POST.get('note', '')
+        
+        try:
+            ApplicationService.change_status(application, new_status, request.user, note)
+            messages.success(request, f'Status updated to {application.get_status_display()}.')
+            logger.info(f'Application {application.id} status updated by {request.user.email}')
+        except ValidationError as e:
+            messages.error(request, str(e))
+        
+        return redirect('applications:applicant_detail', pk=pk)
+
+
+class AddApplicantNoteView(EmployeeRoleMixin, View):
+    """View for recruiters to add notes to applicant."""
+    
+    def post(self, request, pk):
+        """Add note to recruiter_notes."""
+        application = get_object_or_404(
+            Application,
+            pk=pk,
+            job__company=request.user.company
+        )
+        
+        note = request.POST.get('note', '').strip()
+        if note:
+            ApplicationService.add_applicant_note(application, note)
+            messages.success(request, 'Note added successfully.')
+            logger.info(f'Note added to application {application.id} by {request.user.email}')
+        else:
+            messages.error(request, 'Note cannot be empty.')
+        
+        return redirect('applications:applicant_detail', pk=pk)
+
+
+class RateApplicantView(EmployeeRoleMixin, View):
+    """View for recruiters to rate applicant."""
+    
+    def post(self, request, pk):
+        """Set rating for applicant."""
+        application = get_object_or_404(
+            Application,
+            pk=pk,
+            job__company=request.user.company
+        )
+        
+        try:
+            rating = int(request.POST.get('rating', 0))
+            ApplicationService.rate_applicant(application, rating)
+            messages.success(request, f'Rating set to {rating} stars.')
+            logger.info(f'Application {application.id} rated {rating} by {request.user.email}')
+        except (ValueError, ValidationError) as e:
+            messages.error(request, str(e))
+        
+        return redirect('applications:applicant_detail', pk=pk)
+
+
+class BulkActionView(EmployeeRoleMixin, View):
+    """View for bulk status changes."""
+    
+    def post(self, request, job_pk):
+        """Handle bulk status changes for a job's applicants."""
+        job = get_object_or_404(Job, pk=job_pk, company=request.user.company)
+        
+        application_ids = request.POST.getlist('application_ids')
+        action = request.POST.get('action')
+        note = request.POST.get('note', '')
+        
+        if not application_ids:
+            messages.error(request, 'No applications selected.')
+            return redirect('applications:job_applicants', pk=job_pk)
+        
+        # Verify all applications belong to this job
+        applications = Application.objects.filter(
+            id__in=application_ids,
+            job=job
+        )
+        
+        if applications.count() != len(application_ids):
+            messages.error(request, 'Invalid application selection.')
+            return redirect('applications:job_applicants', pk=job_pk)
+        
+        try:
+            updated = ApplicationService.bulk_change_status(
+                application_ids,
+                action,
+                request.user,
+                note
+            )
+            messages.success(request, f'{len(updated)} applications updated to {action}.')
+            logger.info(f'Bulk action: {len(updated)} applications updated to {action} by {request.user.email}')
+        except ValidationError as e:
+            messages.error(request, str(e))
+        
+        return redirect('applications:job_applicants', pk=job_pk)
+
+
+class ExportApplicantsCSVView(EmployeeRoleMixin, View):
+    """View to export applicants to CSV."""
+    
+    def get(self, request, job_pk):
+        """Generate CSV file."""
+        job = get_object_or_404(Job, pk=job_pk, company=request.user.company)
+        
+        applications = Application.objects.filter(job=job).select_related(
+            'applicant', 'applicant__job_seeker_profile'
+        ).order_by('-applied_at')
+        
+        # Create CSV response
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="applicants_{job.slug}_{datetime.now().strftime("%Y%m%d")}.csv"'
+        
+        writer = csv.writer(response)
+        writer.writerow(['Name', 'Email', 'Job Title', 'Status', 'Rating', 'Applied Date', 'Resume URL'])
+        
+        for app in applications:
+            resume_url = ''
+            try:
+                if app.applicant.job_seeker_profile and app.applicant.job_seeker_profile.resume:
+                    resume_url = request.build_absolute_uri(app.applicant.job_seeker_profile.resume.url)
+            except:
+                pass
+            
+            writer.writerow([
+                app.applicant.get_full_name(),
+                app.applicant.email,
+                job.title,
+                app.get_status_display(),
+                app.rating or '',
+                app.applied_at.strftime('%Y-%m-%d'),
+                resume_url
+            ])
+        
+        logger.info(f'CSV export for job {job.id} by {request.user.email}')
+        return response
 
 
 class ApplicationStatusTimelineView(LoginRequiredMixin, DetailView):

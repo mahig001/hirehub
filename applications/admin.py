@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Application, ApplicationStatusHistory
+from .models import Application, ApplicationStatusHistory, Interview
 
 
 class ApplicationStatusHistoryInline(admin.TabularInline):
@@ -17,8 +17,8 @@ class ApplicationStatusHistoryInline(admin.TabularInline):
 class ApplicationAdmin(admin.ModelAdmin):
     """Admin interface for Application model."""
     
-    list_display = ['id', 'applicant', 'job', 'status', 'applied_at', 'updated_at']
-    list_filter = ['status', 'applied_at', 'job__company']
+    list_display = ['id', 'applicant', 'job', 'status', 'rating', 'applied_at', 'updated_at']
+    list_filter = ['status', 'rating', 'applied_at', 'job__company']
     search_fields = ['applicant__email', 'applicant__first_name', 'applicant__last_name', 
                      'job__title', 'job__company__name']
     readonly_fields = ['applied_at', 'updated_at']
@@ -27,10 +27,10 @@ class ApplicationAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Application Info', {
-            'fields': ('job', 'applicant', 'status')
+            'fields': ('job', 'applicant', 'status', 'rating')
         }),
         ('Content', {
-            'fields': ('cover_letter',)
+            'fields': ('cover_letter', 'recruiter_notes')
         }),
         ('Timestamps', {
             'fields': ('applied_at', 'updated_at'),
@@ -54,3 +54,27 @@ class ApplicationStatusHistoryAdmin(admin.ModelAdmin):
     
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(Interview)
+class InterviewAdmin(admin.ModelAdmin):
+    """Admin interface for Interview model."""
+    
+    list_display = ['id', 'application', 'interview_type', 'scheduled_at', 'interviewer', 'rating']
+    list_filter = ['interview_type', 'scheduled_at', 'rating']
+    search_fields = ['application__applicant__email', 'application__job__title', 'location', 'notes']
+    readonly_fields = ['created_at', 'updated_at']
+    date_hierarchy = 'scheduled_at'
+    
+    fieldsets = (
+        ('Interview Info', {
+            'fields': ('application', 'interview_type', 'scheduled_at', 'interviewer')
+        }),
+        ('Details', {
+            'fields': ('location', 'notes', 'rating')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )

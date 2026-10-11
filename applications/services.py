@@ -1,9 +1,10 @@
 """Business logic for application management."""
 import logging
+from datetime import datetime, timedelta
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
-from .models import Application, ApplicationStatusHistory
+from .models import Application, ApplicationStatusHistory, Interview
 
 logger = logging.getLogger(__name__)
 
@@ -150,3 +151,124 @@ class ApplicationService:
             QuerySet of ApplicationStatusHistory
         """
         return application.status_history.select_related('changed_by').all()
+    
+    @staticmethod
+    @transaction.atomic
+    def schedule_interview(application, interview_data, scheduled_by):
+        """
+        Schedule an interview for an application.
+        
+        Args:
+            application: Application instance
+            interview_data: Dict with interview details
+            scheduled_by: User scheduling the interview
+            
+        Returns:
+            Interview instance
+            
+        Raises:
+            ValidationError: If validation fails
+        """
+        # Validate rating if provided
+        rating = interview_data.get('rating')
+        if rating is not None and (rating < 1 or rating > 5):
+            raise ValidationError('Rating must be between 1 and 5.')
+        
+        # Create interview
+        interview = Interview.objects.create(
+            application=application,
+            scheduled_at=interview_data['scheduled_at'],
+            interview_type=interview_data['interview_type'],
+            location=interview_data['location'],
+            notes=interview_data.get('notes', ''),
+            rating=rating,
+            interviewer=interview_data.get('interviewer')
+        )
+        
+        logger.info(f'Interview scheduled: {interview.id} for application {application.id} by {scheduled_by.email}')
+        
+        # TODO: Send notification signal for interview scheduling
+        
+        return interview
+    
+    @staticmethod
+    @transaction.atomic
+    def add_applicant_note(application, note):
+        """
+        Add a note to recruiter_notes with timestamp.
+        
+        Args:
+            application: Application instance
+            note: Note text to append
+            
+        Returns:
+            Application instance
+        """
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        new_note = f"[{timestamp}] {note}"
+        
+        if application.recruiter_notes:
+            application.recruiter_notes += f"\n\n{new_note}"
+        else:
+            application.recruiter_notes = new_note
+        
+        application.save(update_fields=['recruiter_notes', 'updated_at'])
+        
+        logger.info(f'Note added to application {application.id}')
+        
+        return application
+    
+    @staticmethod
+    @transaction.atomic
+    def rate_applicant(application, rating):
+        """
+        Set the overall rating for an applicant.
+        
+        Args:
+            application: Application instance
+            rating: Integer rating (1-5)
+            
+        Returns:
+            Application instance
+            
+        Raises:
+            ValidationError: If rating is invalid
+        """
+        if rating < 1 or rating > 5:
+            raise ValidationError('Rating must be between 1 and 5.')
+        
+        application.rating = rating
+        application.save(update_fields=['rating', 'updated_at'])
+        
+        logger.info(f'Application {application.id} rated: {rating}')
+        
+        return application
+    
+    @staticmethod
+    @transaction.atomic
+    def bulk_change_status(application_ids, new_status, changed_by, note=''):
+        """
+        Change status for multiple applications.
+        
+        Args:
+            application_ids: List of application IDs
+            new_status: New status value
+            changed_by: User making the change
+            note: Optional note about the change
+            
+        Returns:
+            List of updated Application instances
+        """
+        applications = Application.objects.filter(id__in=application_ids)
+        updated = []
+        
+        for application in applications:
+            try:
+                ApplicationService.change_status(application, new_status, changed_by, note)
+                updated.append(application)
+            except ValidationError as e:
+                logger.warning(f'Failed to change status for application {application.id}: {e}')
+        
+        logger.info(f'Bulk status change: {len(updated)} applications updated to {new_status}')
+        
+        return updated

@@ -28,6 +28,8 @@ class Application(models.Model):
     )
     cover_letter = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=PENDING)
+    recruiter_notes = models.TextField(blank=True)
+    rating = models.IntegerField(null=True, blank=True)
     applied_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -73,3 +75,50 @@ class ApplicationStatusHistory(models.Model):
     
     def __str__(self):
         return f'{self.application} - {self.old_status} → {self.new_status}'
+
+
+class Interview(models.Model):
+    """Interview scheduling model."""
+    
+    PHONE = 'PHONE'
+    VIDEO = 'VIDEO'
+    IN_PERSON = 'IN_PERSON'
+    TECHNICAL = 'TECHNICAL'
+    HR = 'HR'
+    
+    INTERVIEW_TYPE_CHOICES = [
+        (PHONE, 'Phone'),
+        (VIDEO, 'Video'),
+        (IN_PERSON, 'In-Person'),
+        (TECHNICAL, 'Technical'),
+        (HR, 'HR'),
+    ]
+    
+    application = models.ForeignKey(
+        Application,
+        on_delete=models.CASCADE,
+        related_name='interviews'
+    )
+    scheduled_at = models.DateTimeField()
+    interview_type = models.CharField(max_length=20, choices=INTERVIEW_TYPE_CHOICES)
+    location = models.TextField()
+    notes = models.TextField(blank=True)
+    rating = models.IntegerField(null=True, blank=True)
+    interviewer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='interviews_conducted'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['scheduled_at']
+        indexes = [
+            models.Index(fields=['scheduled_at']),
+        ]
+    
+    def __str__(self):
+        return f'{self.get_interview_type_display()} interview for {self.application}'
