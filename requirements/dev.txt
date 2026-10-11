@@ -1,0 +1,7 @@
+-r base.txt
+
+# Testing
+coverage==7.6.1
+
+# Code quality
+ruff==0.6.8
