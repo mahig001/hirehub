@@ -299,6 +299,171 @@ class ProfileViewsTest(TestCase):
         self.assertEqual(profile.bio, 'Test Bio')
 
 
+class UserModelTests(TestCase):
+    """Tests for User model."""
+    
+    def test_user_role_choices(self):
+        """Test that user roles are set correctly."""
+        user = User.objects.create_user(
+            email='test@test.com',
+            password='testpass123',
+            role=User.USER
+        )
+        self.assertEqual(user.role, 'USER')
+        
+        employee = User.objects.create_user(
+            email='employee@test.com',
+            password='testpass123',
+            role=User.EMPLOYEE
+        )
+        self.assertEqual(employee.role, 'EMPLOYEE')
+        
+        admin = User.objects.create_user(
+            email='admin@test.com',
+            password='testpass123',
+            role=User.ADMIN
+        )
+        self.assertEqual(admin.role, 'ADMIN')
+    
+    def test_user_default_role(self):
+        """Test that default role is USER."""
+        user = User.objects.create_user(
+            email='test@test.com',
+            password='testpass123'
+        )
+        self.assertEqual(user.role, 'USER')
+    
+    def test_user_str_representation(self):
+        """Test user string representation."""
+        user = User.objects.create_user(
+            email='john.doe@test.com',
+            password='testpass123',
+            first_name='John',
+            last_name='Doe'
+        )
+        self.assertEqual(str(user), 'john.doe@test.com')
+
+
+class JobSeekerProfileSignalTests(TestCase):
+    """Tests for JobSeekerProfile signal."""
+    
+    def test_profile_created_on_user_creation(self):
+        """Test that profile is automatically created when user is created."""
+        user = User.objects.create_user(
+            email='test@test.com',
+            password='testpass123',
+            role=User.USER
+        )
+        # Profile should be created automatically
+        self.assertTrue(JobSeekerProfile.objects.filter(user=user).exists())
+        profile = JobSeekerProfile.objects.get(user=user)
+        self.assertEqual(profile.user, user)
+
+
+class RegistrationViewTests(TestCase):
+    """Tests for user registration."""
+    
+    def setUp(self):
+        self.client = Client()
+        self.url = reverse('accounts:register')
+    
+    def test_registration_view_get(self):
+        """Test that registration page loads."""
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+    
+    def test_registration_creates_user(self):
+        """Test that valid registration creates user."""
+        data = {
+            'email': 'newuser@test.com',
+            'password1': 'ComplexPass123!',
+            'password2': 'ComplexPass123!',
+            'first_name': 'New',
+            'last_name': 'User',
+            'role': 'USER'
+        }
+        response = self.client.post(self.url, data)
+        
+        # Check user was created
+        self.assertTrue(User.objects.filter(email='newuser@test.com').exists())
+        user = User.objects.get(email='newuser@test.com')
+        self.assertEqual(user.first_name, 'New')
+        self.assertEqual(user.last_name, 'User')
+        self.assertEqual(user.role, 'USER')
+
+
+class LoginViewTests(TestCase):
+    """Tests for login functionality."""
+    
+    def setUp(self):
+        self.client = Client()
+        self.url = reverse('accounts:login')
+        self.user = User.objects.create_user(
+            email='test@test.com',
+            password='testpass123',
+            role=User.USER
+        )
+    
+    def test_login_with_valid_credentials(self):
+        """Test login with valid credentials."""
+        response = self.client.post(self.url, {
+            'username': 'test@test.com',
+            'password': 'testpass123'
+        })
+        # Should redirect after successful login
+        self.assertEqual(response.status_code, 302)
+    
+    def test_login_with_invalid_credentials(self):
+        """Test login with invalid credentials shows error."""
+        response = self.client.post(self.url, {
+            'username': 'test@test.com',
+            'password': 'wrongpassword'
+        })
+        # Should stay on login page
+        self.assertEqual(response.status_code, 200)
+        # Should have error message in context
+        self.assertTrue(response.context['form'].errors)
+
+
+class ProfileUpdateViewTests(TestCase):
+    """Tests for profile update functionality."""
+    
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            email='test@test.com',
+            password='testpass123',
+            role=User.USER
+        )
+        self.profile = JobSeekerProfile.objects.get(user=self.user)
+        self.url = reverse('accounts:profile_edit')
+    
+    def test_profile_update_requires_login(self):
+        """Test that profile update requires login."""
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+    
+    def test_profile_update_success(self):
+        """Test successful profile update."""
+        self.client.force_login(self.user)
+        
+        response = self.client.post(self.url, {
+            'headline': 'Software Engineer',
+            'bio': 'Experienced developer',
+            'location': 'San Francisco',
+            'phone': '5551234567'
+        })
+        
+        # Should redirect after update
+        self.assertEqual(response.status_code, 302)
+        
+        # Verify profile was updated
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.headline, 'Software Engineer')
+        self.assertEqual(self.profile.bio, 'Experienced developer')
+
+
 class SavedJobsTest(TestCase):
     """Tests for saved jobs functionality."""
     

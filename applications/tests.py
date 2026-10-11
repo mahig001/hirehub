@@ -11,6 +11,72 @@ from .services import ApplicationService
 User = get_user_model()
 
 
+class ApplicationStatusHistoryTests(TestCase):
+    """Tests for ApplicationStatusHistory model."""
+    
+    def setUp(self):
+        """Set up test data."""
+        self.job_seeker = User.objects.create_user(
+            email='seeker@test.com',
+            password='testpass123',
+            first_name='John',
+            last_name='Seeker',
+            role='USER'
+        )
+        
+        self.recruiter = User.objects.create_user(
+            email='recruiter@test.com',
+            password='testpass123',
+            first_name='Jane',
+            last_name='Recruiter',
+            role='EMPLOYEE'
+        )
+        
+        self.company = Company.objects.create(
+            owner=self.recruiter,
+            name='Test Company',
+            industry='technology',
+            size='11-50',
+            location='San Francisco',
+            about='A test company'
+        )
+        
+        self.category = Category.objects.create(name='Software Engineering')
+        
+        self.job = Job.objects.create(
+            company=self.company,
+            title='Senior Engineer',
+            description='A senior engineering role',
+            category=self.category,
+            location='San Francisco',
+            job_type='FULL_TIME',
+            is_active=True,
+            is_approved=True
+        )
+    
+    def test_status_history_created_on_status_change(self):
+        """Test that history entry is created when status changes."""
+        app = ApplicationService.create_application(
+            job=self.job,
+            applicant=self.job_seeker
+        )
+        
+        # Change status
+        ApplicationService.change_status(
+            app,
+            Application.REVIEWING,
+            self.recruiter,
+            'Starting review'
+        )
+        
+        # Check history
+        self.assertEqual(app.status_history.count(), 2)
+        latest = app.status_history.first()
+        self.assertEqual(latest.old_status, Application.PENDING)
+        self.assertEqual(latest.new_status, Application.REVIEWING)
+        self.assertEqual(latest.changed_by, self.recruiter)
+
+
 class ApplicationServiceTests(TestCase):
     """Test ApplicationService methods."""
     
@@ -344,6 +410,20 @@ class ApplicationViewTests(TestCase):
         # Check that URL contains the job slug (for job detail redirect)
         self.assertIn(self.job.slug, response.url)
     
+    def test_apply_to_inactive_job_prevented(self):
+        """Test that applying to inactive job is prevented."""
+        # Make job inactive
+        self.job.is_active = False
+        self.job.save()
+        
+        self.client.force_login(self.job_seeker)
+        response = self.client.get(
+            reverse('applications:apply', kwargs={'job_pk': self.job.pk})
+        )
+        
+        # Should redirect with error message
+        self.assertEqual(response.status_code, 302)
+    
     def test_my_applications_list_access(self):
         """Test that only job seekers can access their applications list."""
         self.client.force_login(self.recruiter)
@@ -382,6 +462,23 @@ class ApplicationViewTests(TestCase):
         response = self.client.post(reverse('applications:withdraw', kwargs={'pk': app.pk}))
         
         # Should get 404 or 403
+        self.assertIn(response.status_code, [302, 403, 404])
+    
+    def test_withdraw_application_only_applicant_can_withdraw(self):
+        """Test that only the applicant can withdraw their application."""
+        app = ApplicationService.create_application(self.job, self.job_seeker)
+        
+        # Create another user
+        other_user = User.objects.create_user(
+            email='other@test.com',
+            password='testpass123',
+            role='USER'
+        )
+        
+        self.client.force_login(other_user)
+        response = self.client.post(reverse('applications:withdraw', kwargs={'pk': app.pk}))
+        
+        # Should fail - cannot withdraw someone else's application
         self.assertIn(response.status_code, [302, 403, 404])
     
     def test_job_applicants_list_access(self):

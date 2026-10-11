@@ -1,6 +1,12 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ company.name }} - {{ block.super }}{% endblock %}
+{% block title %}{{ company.name }} - HireHub{% endblock %}
+
+{% block meta_description %}{{ company.name }} - {{ company.get_industry_display }} company with {{ company.get_size_display }} in {{ company.location }}. View open positions and company profile.{% endblock %}
+
+{% block og_title %}{{ company.name }} - HireHub{% endblock %}
+
+{% block og_description %}{{ company.name }} - {{ company.get_industry_display }} company. View open positions and company profile.{% endblock %}
 
 {% block content %}
 <div class="container my-5">

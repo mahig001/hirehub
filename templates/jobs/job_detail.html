@@ -1,6 +1,12 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ job.title }} at {{ job.company.name }} - {{ block.super }}{% endblock %}
+{% block title %}{{ job.title }} at {{ job.company.name }} - HireHub{% endblock %}
+
+{% block meta_description %}{{ job.title }} at {{ job.company.name }}. {{ job.get_job_type_display }} position in {{ job.location }}. Apply now on HireHub.{% endblock %}
+
+{% block og_title %}{{ job.title }} at {{ job.company.name }}{% endblock %}
+
+{% block og_description %}{{ job.title }} at {{ job.company.name }}. {{ job.get_job_type_display }} position in {{ job.location }}.{% endblock %}
 
 {% block content %}
 <div class="container my-5">

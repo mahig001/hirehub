@@ -40,3 +40,38 @@ class ContactViewTests(TestCase):
         
         # Verify redirect
         self.assertEqual(response.status_code, 302)
+
+
+class RobotsTxtViewTests(TestCase):
+    """Tests for robots.txt view."""
+    
+    def test_robots_txt_returns_text_plain(self):
+        """Test that robots.txt view returns text/plain content."""
+        response = self.client.get('/robots.txt')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'text/plain')
+        self.assertIn('User-agent: *', response.content.decode())
+
+
+class ErrorPageTests(TestCase):
+    """Tests for custom error pages."""
+    
+    def test_404_page_renders(self):
+        """Test that 404 error page can be rendered."""
+        from core.views import handler404
+        from django.http import HttpRequest
+        
+        request = HttpRequest()
+        response = handler404(request)
+        self.assertEqual(response.status_code, 404)
+
+
+class SitemapTests(TestCase):
+    """Tests for sitemap."""
+    
+    def test_sitemap_returns_xml(self):
+        """Test that sitemap URL returns XML."""
+        response = self.client.get('/sitemap.xml')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/xml')
+

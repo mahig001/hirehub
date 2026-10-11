@@ -41,6 +41,42 @@ class AdminDashboardViewTests(TestCase):
         self.assertIn(response.status_code, [302, 403])
 
 
+class EmployeeDashboardViewTests(TestCase):
+    """Tests for EmployeeDashboardView."""
+    
+    def setUp(self):
+        """Set up test data."""
+        self.employee_user = User.objects.create_user(
+            email='employee@test.com',
+            password='testpass123',
+            first_name='Employee',
+            last_name='User',
+            role=User.EMPLOYEE
+        )
+        self.job_seeker = User.objects.create_user(
+            email='seeker@test.com',
+            password='testpass123',
+            first_name='Seeker',
+            last_name='User',
+            role=User.USER
+        )
+        self.company = Company.objects.create(
+            owner=self.employee_user,
+            name='Test Company',
+            industry='technology',
+            size='11-50',
+            location='San Francisco',
+            about='Test company'
+        )
+        self.url = reverse('dashboard:employee_dashboard')
+    
+    def test_employee_requires_role(self):
+        """Test that EMPLOYEE role is required."""
+        self.client.force_login(self.job_seeker)
+        response = self.client.get(self.url)
+        self.assertIn(response.status_code, [302, 403])
+
+
 class UserToggleActiveViewTests(TestCase):
     """Tests for UserToggleActiveView."""
     
